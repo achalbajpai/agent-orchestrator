@@ -1,6 +1,6 @@
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Sidebar } from "./Sidebar";
@@ -84,8 +84,6 @@ beforeEach(() => {
 	navigateMock.mockReset();
 	renameSessionMock.mockReset().mockResolvedValue(undefined);
 	mockParams.projectId = undefined;
-	vi.spyOn(window, "confirm").mockReturnValue(true);
-	vi.spyOn(window, "alert").mockImplementation(() => undefined);
 });
 
 afterEach(() => {
@@ -93,28 +91,33 @@ afterEach(() => {
 });
 
 describe("Sidebar", () => {
-	it("confirms project removal before calling the remove handler", async () => {
+	it("confirms project removal in an in-app dialog before calling the remove handler", async () => {
 		const user = userEvent.setup();
 		const onRemoveProject = renderSidebar();
 
 		await user.click(screen.getByLabelText("Project actions for Project One"));
 		await user.click(await screen.findByRole("menuitem", { name: "Remove project" }));
 
-		expect(window.confirm).toHaveBeenCalledWith(
-			"Remove project Project One? This stops its live sessions and removes it from the sidebar, but keeps the repository folder and stored history on disk.",
-		);
+		const dialog = await screen.findByRole("dialog", { name: "Remove project Project One?" });
+		expect(onRemoveProject).not.toHaveBeenCalled();
+
+		await user.click(within(dialog).getByRole("button", { name: "Remove project" }));
+
 		await waitFor(() => expect(onRemoveProject).toHaveBeenCalledTimes(1));
 	});
 
-	it("does not remove the project when confirmation is cancelled", async () => {
-		vi.mocked(window.confirm).mockReturnValue(false);
+	it("does not remove the project when the dialog is cancelled", async () => {
 		const user = userEvent.setup();
 		const onRemoveProject = renderSidebar();
 
 		await user.click(screen.getByLabelText("Project actions for Project One"));
 		await user.click(await screen.findByRole("menuitem", { name: "Remove project" }));
 
+		const dialog = await screen.findByRole("dialog", { name: "Remove project Project One?" });
+		await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
 		expect(onRemoveProject).not.toHaveBeenCalled();
+		await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 	});
 
 	it("reveals dashboard and orchestrator buttons alongside the kebab on the project row", () => {

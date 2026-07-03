@@ -36,6 +36,8 @@ import {
 	DropdownMenuShortcut,
 	DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import { Button } from "./ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 import {
 	Sidebar as SidebarRoot,
 	SidebarContent,
@@ -404,6 +406,7 @@ function ProjectItem({
 	const queryClient = useQueryClient();
 	const [removeError, setRemoveError] = useState<string | null>(null);
 	const [isRemoving, setIsRemoving] = useState(false);
+	const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
 	const [isSpawning, setIsSpawning] = useState(false);
 	// Live workers only: merged/terminated sessions leave the sidebar and stay
 	// reachable through the board's Done / Terminated bar (SessionsBoard).
@@ -442,22 +445,17 @@ function ProjectItem({
 		}
 	};
 
-	const removeProject = async () => {
+	const confirmRemoveProject = async () => {
 		setRemoveError(null);
-		const confirmed = window.confirm(
-			`Remove project ${workspace.name}? This stops its live sessions and removes it from the sidebar, but keeps the repository folder and stored history on disk.`,
-		);
-		if (!confirmed) return;
-
 		setIsRemoving(true);
 		try {
 			await onRemoveProject(workspace.id);
 			// The route for a removed project no longer resolves; fall back home.
 			if (selection.activeProjectId === workspace.id) selection.goHome();
+			setConfirmRemoveOpen(false);
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Could not remove project";
 			setRemoveError(message);
-			window.alert(message);
 		} finally {
 			setIsRemoving(false);
 		}
@@ -551,7 +549,10 @@ function ProjectItem({
 						<DropdownMenuItem
 							className="text-destructive focus:text-destructive [&_svg]:text-destructive"
 							disabled={isRemoving}
-							onSelect={() => void removeProject()}
+							onSelect={() => {
+								setRemoveError(null);
+								setConfirmRemoveOpen(true);
+							}}
 						>
 							<Trash2 aria-hidden="true" />
 							Remove project
@@ -559,11 +560,40 @@ function ProjectItem({
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</div>
-			{removeError && (
-				<span className="sr-only" role="status">
-					{removeError}
-				</span>
-			)}
+			<Dialog
+				open={confirmRemoveOpen}
+				onOpenChange={(open) => {
+					if (isRemoving) return;
+					setConfirmRemoveOpen(open);
+					if (!open) setRemoveError(null);
+				}}
+			>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Remove project {workspace.name}?</DialogTitle>
+						<DialogDescription>
+							This stops its live sessions and removes it from the sidebar, but keeps the repository folder and stored
+							history on disk.
+						</DialogDescription>
+					</DialogHeader>
+					{removeError && (
+						<p
+							className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-[12px] leading-5 text-destructive"
+							role="alert"
+						>
+							{removeError}
+						</p>
+					)}
+					<DialogFooter>
+						<Button variant="outline" disabled={isRemoving} onClick={() => setConfirmRemoveOpen(false)}>
+							Cancel
+						</Button>
+						<Button variant="destructive" disabled={isRemoving} onClick={() => void confirmRemoveProject()}>
+							{isRemoving ? "Removing…" : "Remove project"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 			{/* project-sidebar__sessions: indented under the project parent so worker
           sessions read as children without adding a persistent guide rail. */}
 			{expanded && sessions.length > 0 && (
