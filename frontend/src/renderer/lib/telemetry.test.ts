@@ -7,6 +7,7 @@ import {
 	sanitizeRendererExceptionProperties,
 	sanitizeRendererProperties,
 } from "./telemetry";
+import { ORCHESTRATOR_SPAWN_SOURCES } from "./orchestrator-spawn-sources";
 
 describe("telemetry sanitizers", () => {
 	it("builds stable AO version context for PostHog events", () => {
@@ -165,17 +166,8 @@ describe("telemetry sanitizers", () => {
 		expect(badSource).not.toHaveProperty("source");
 	});
 
-	it("keeps every whitelisted spawn source, including topbar/sidebar/project_add/settings/restart/command_palette", async () => {
-		for (const source of [
-			"board",
-			"restore_dialog",
-			"topbar",
-			"sidebar",
-			"project_add",
-			"settings",
-			"restart",
-			"command_palette",
-		]) {
+	it("keeps every whitelisted spawn source (the shared ORCHESTRATOR_SPAWN_SOURCES list)", async () => {
+		for (const source of ORCHESTRATOR_SPAWN_SOURCES) {
 			const props = await sanitizeRendererProperties("ao.renderer.orchestrator_spawn_succeeded", {
 				project_id: "demo-project",
 				source,

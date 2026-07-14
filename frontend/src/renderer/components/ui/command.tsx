@@ -70,7 +70,7 @@ function CommandInput({ className, ...props }: React.ComponentProps<typeof Comma
 	return (
 		<div
 			data-slot="command-input-wrapper"
-			className="flex items-center gap-2 border-b border-border px-4"
+			className="flex items-center gap-2 border-b border-border px-4 focus-within:ring-2 focus-within:ring-inset focus-within:ring-accent-weak"
 			cmdk-input-wrapper=""
 		>
 			<Search className="size-icon-lg shrink-0 text-passive" aria-hidden="true" />
@@ -90,7 +90,10 @@ function CommandList({ className, ...props }: React.ComponentProps<typeof Comman
 	return (
 		<CommandPrimitive.List
 			data-slot="command-list"
-			className={cn("max-h-[min(340px,50vh)] scroll-py-1 overflow-y-auto overflow-x-hidden p-1", className)}
+			className={cn(
+				"max-h-[min(340px,50vh)] scroll-py-1 overflow-y-auto overflow-x-hidden overscroll-contain p-1",
+				className,
+			)}
 			{...props}
 		/>
 	);

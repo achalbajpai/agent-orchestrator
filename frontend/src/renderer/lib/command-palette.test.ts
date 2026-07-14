@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { buildCommands, filterCommands, groupCommands, type CommandItem } from "./command-palette";
+import {
+	buildCommands,
+	filterCommands,
+	groupCommands,
+	displayGroups,
+	MAX_ITEMS_PER_GROUP,
+	MAX_SEARCH_RESULTS,
+	type CommandItem,
+} from "./command-palette";
 import type { PullRequestFacts, WorkspaceSession, WorkspaceSummary } from "../types/workspace";
 
 function session(overrides: Partial<WorkspaceSession> & { id: string }): WorkspaceSession {
@@ -154,6 +162,80 @@ describe("buildCommands pull requests", () => {
 		expect(ids.has("pr:w-mix:9")).toBe(true);
 		expect(ids.has("pr:w-mix:7")).toBe(false);
 		expect(ids.has("pr:w-mix:8")).toBe(false);
+	});
+});
+
+describe("buildCommands finished sessions", () => {
+	function withFinished(): WorkspaceSummary[] {
+		return [
+			{
+				id: "proj-1",
+				name: "app",
+				path: "/repos/app",
+				type: "main",
+				sessions: [
+					session({ id: "w-live", title: "live one", status: "working" }),
+					session({ id: "w-done", title: "archived cleanup", status: "terminated" }),
+					session({ id: "w-merged", title: "old merge", status: "merged" }),
+				],
+			},
+		];
+	}
+
+	it("indexes merged/terminated sessions as search-only (hidden until typed, then findable)", () => {
+		const items = buildCommands({ workspaces: withFinished() });
+		const done = byId(items).get("session:w-done");
+		expect(done?.searchOnly).toBe(true);
+		expect(byId(items).get("session:w-live")?.searchOnly).toBeFalsy();
+
+		const suggested = filterCommands(items, "");
+		expect(suggested.some((item) => item.id === "session:w-done")).toBe(false);
+		expect(suggested.some((item) => item.id === "session:w-live")).toBe(true);
+
+		const searched = filterCommands(items, "archived");
+		expect(searched.some((item) => item.id === "session:w-done")).toBe(true);
+	});
+});
+
+describe("result caps", () => {
+	const manyProjects = (n: number): WorkspaceSummary[] =>
+		Array.from({ length: n }, (_, i) => ({
+			id: `p${i}`,
+			name: `project-${i}`,
+			path: `/repos/p${i}`,
+			type: "main" as const,
+			sessions: [],
+		}));
+
+	it("caps the pre-typing suggestion view per group so huge installs never render every row", () => {
+		const grouped = displayGroups(buildCommands({ workspaces: manyProjects(50) }), "");
+		expect(grouped.find((g) => g.id === "projects")?.items.length).toBe(MAX_ITEMS_PER_GROUP);
+		expect(grouped.find((g) => g.id === "global")?.items.length).toBeGreaterThan(0);
+	});
+
+	it("renders a typed search as one flat Results group capped to MAX_SEARCH_RESULTS", () => {
+		const groups = displayGroups(buildCommands({ workspaces: manyProjects(50) }), "project");
+		expect(groups).toHaveLength(1);
+		expect(groups[0]?.id).toBe("results");
+		expect(groups[0]?.items.length).toBe(MAX_SEARCH_RESULTS);
+	});
+
+	it("preserves global rank order across categories (higher score renders first, not by group)", () => {
+		const workspaces: WorkspaceSummary[] = [
+			{
+				id: "alpha",
+				name: "alpha",
+				path: "/repos/alpha",
+				type: "main",
+				sessions: [session({ id: "s-attn", title: "fix alpha bug", status: "needs_input" })],
+			},
+		];
+		const groups = displayGroups(buildCommands({ workspaces }), "alpha");
+		expect(groups).toHaveLength(1);
+		const order = groups[0]?.items.map((item) => item.id) ?? [];
+		expect(order[0]).toBe("project:alpha");
+		expect(order).toContain("attention:s-attn");
+		expect(order.length).toBeLessThanOrEqual(MAX_SEARCH_RESULTS);
 	});
 });
 

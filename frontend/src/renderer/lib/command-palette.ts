@@ -34,6 +34,7 @@ export type CommandItem = {
 	keywords?: string[];
 	disabled?: boolean;
 	disabledReason?: string;
+	searchOnly?: boolean;
 	action?: CommandAction;
 };
 
@@ -169,7 +170,7 @@ export function buildCommands(ctx: CommandPaletteContext): CommandItem[] {
 
 	for (const workspace of workspaces) {
 		for (const session of workerSessions(workspace.sessions).filter(
-			(session) => sessionIsActive(session) && !attentionIds.has(session.id) && session.id !== currentSessionId,
+			(session) => !attentionIds.has(session.id) && session.id !== currentSessionId,
 		)) {
 			items.push({
 				id: `session:${session.id}`,
@@ -177,6 +178,7 @@ export function buildCommands(ctx: CommandPaletteContext): CommandItem[] {
 				title: session.title,
 				subtitle: workspace.name,
 				keywords: [workspace.name, session.branch, session.issueId ?? ""],
+				searchOnly: !sessionIsActive(session),
 				action: {
 					kind: "navigate",
 					target: {
@@ -273,7 +275,7 @@ export function matchScore(query: string, item: CommandItem): number {
 }
 
 export function filterCommands(items: CommandItem[], query: string): CommandItem[] {
-	if (!query.trim()) return items;
+	if (!query.trim()) return items.filter((item) => !item.searchOnly);
 	return items
 		.map((item, index) => ({ item, index, score: matchScore(query, item) }))
 		.filter((entry) => entry.score > 0)
@@ -281,8 +283,31 @@ export function filterCommands(items: CommandItem[], query: string): CommandItem
 		.map((entry) => entry.item);
 }
 
+export const MAX_ITEMS_PER_GROUP = 20;
+
+export const MAX_SEARCH_RESULTS = 20;
+
 export function groupCommands(items: CommandItem[]): { id: CommandGroupId; label: string; items: CommandItem[] }[] {
 	return commandGroupOrder
-		.map((id) => ({ id, label: commandGroupLabel[id], items: items.filter((item) => item.group === id) }))
+		.map((id) => ({
+			id,
+			label: commandGroupLabel[id],
+			items: items.filter((item) => item.group === id).slice(0, MAX_ITEMS_PER_GROUP),
+		}))
 		.filter((group) => group.items.length > 0);
+}
+
+export function visibleForQuery(items: CommandItem[], query: string): CommandItem[] {
+	const ranked = filterCommands(items, query);
+	return query.trim() ? ranked.slice(0, MAX_SEARCH_RESULTS) : ranked;
+}
+
+export type DisplayGroup = { id: string; label: string; items: CommandItem[] };
+
+export function displayGroups(items: CommandItem[], query: string): DisplayGroup[] {
+	const visible = visibleForQuery(items, query);
+	if (query.trim()) {
+		return visible.length > 0 ? [{ id: "results", label: "Results", items: visible }] : [];
+	}
+	return groupCommands(visible);
 }

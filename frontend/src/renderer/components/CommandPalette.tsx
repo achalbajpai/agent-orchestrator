@@ -7,8 +7,7 @@ import { useWorkspaceQuery, workspaceQueryKey } from "../hooks/useWorkspaceQuery
 import { aoBridge } from "../lib/bridge";
 import {
 	buildCommands,
-	filterCommands,
-	groupCommands,
+	displayGroups,
 	type CommandItem as CommandItemModel,
 	type NavigateTarget,
 } from "../lib/command-palette";
@@ -40,7 +39,7 @@ export function CommandPalette() {
 	const restartingProjectIds = useUiStore((s) => s.restartingProjectIds);
 
 	const [query, setQuery] = useState("");
-	const [value, setValue] = useState("");
+	const [selectedValue, setSelectedValue] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [newTaskProjectId, setNewTaskProjectId] = useState<string | undefined>();
 	const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
@@ -63,18 +62,18 @@ export function CommandPalette() {
 			}),
 		[workspaces, currentProjectId, params.sessionId, restartingProjectIds],
 	);
-	const filtered = useMemo(() => filterCommands(items, query), [items, query]);
-	const groups = useMemo(() => groupCommands(filtered), [filtered]);
+	const groups = useMemo(() => displayGroups(items, query), [items, query]);
 
-	useEffect(() => {
-		const preferred = filtered.find((item) => !item.disabled) ?? filtered[0];
-		setValue(preferred?.id ?? "");
-	}, [filtered]);
+	const visibleItems = useMemo(() => groups.flatMap((group) => group.items), [groups]);
+	const value =
+		(visibleItems.some((item) => item.id === selectedValue && !item.disabled)
+			? selectedValue
+			: (visibleItems.find((item) => !item.disabled) ?? visibleItems[0])?.id) ?? "";
 
 	const closePalette = useCallback(() => {
 		setOpen(false);
 		setQuery("");
-		setValue("");
+		setSelectedValue("");
 		setError(null);
 	}, [setOpen]);
 
@@ -224,7 +223,7 @@ export function CommandPalette() {
 				commandProps={{
 					shouldFilter: false,
 					value,
-					onValueChange: setValue,
+					onValueChange: setSelectedValue,
 					loop: true,
 					label: "Command palette",
 				}}
@@ -242,7 +241,7 @@ export function CommandPalette() {
 					{error && (
 						<div
 							role="alert"
-							className="mx-1 mb-1 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+							className="mx-1 mb-1 overflow-hidden rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs wrap-break-word text-destructive"
 						>
 							{error}
 						</div>

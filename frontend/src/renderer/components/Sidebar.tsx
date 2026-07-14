@@ -139,6 +139,24 @@ function SessionDot({ session }: { session: WorkspaceSession }) {
 	);
 }
 
+function CommandPaletteSearchItem({ enabled, onOpen }: { enabled: boolean; onOpen: () => void }) {
+	if (!enabled) return null;
+	return (
+		<DropdownMenuItem
+			onSelect={() =>
+				setTimeout(() => {
+					if (isAnyModalOpen()) return;
+					onOpen();
+				}, 0)
+			}
+		>
+			<Search aria-hidden="true" />
+			Search
+			<DropdownMenuShortcut>{isMac ? "⌘K" : "Ctrl+K"}</DropdownMenuShortcut>
+		</DropdownMenuItem>
+	);
+}
+
 // Built on shadcn's sidebar primitives (components/ui/sidebar): the provider in
 // _shell owns open state (synced to the ui-store) and `collapsible="icon"`
 // replaces the old hand-rolled CollapsedRail — the same tree restyles itself
@@ -371,20 +389,7 @@ export function Sidebar({
 								<GitPullRequest aria-hidden="true" />
 								Pull requests
 							</DropdownMenuItem>
-							{commandPaletteEnabled && (
-								<DropdownMenuItem
-									onSelect={() =>
-										setTimeout(() => {
-											if (isAnyModalOpen()) return;
-											openCommandPalette(true);
-										}, 0)
-									}
-								>
-									<Search aria-hidden="true" />
-									Search
-									<DropdownMenuShortcut>{isMac ? "⌘K" : "Ctrl+K"}</DropdownMenuShortcut>
-								</DropdownMenuItem>
-							)}
+							<CommandPaletteSearchItem enabled={commandPaletteEnabled} onOpen={() => openCommandPalette(true)} />
 							<DropdownMenuSeparator />
 							<DropdownMenuItem onSelect={() => setTimeout(() => setMobileOpen(true), 0)}>
 								<Smartphone aria-hidden="true" />
@@ -449,20 +454,7 @@ export function Sidebar({
 								<GitPullRequest aria-hidden="true" />
 								Pull requests
 							</DropdownMenuItem>
-							{commandPaletteEnabled && (
-								<DropdownMenuItem
-									onSelect={() =>
-										setTimeout(() => {
-											if (isAnyModalOpen()) return;
-											openCommandPalette(true);
-										}, 0)
-									}
-								>
-									<Search aria-hidden="true" />
-									Search
-									<DropdownMenuShortcut>{isMac ? "⌘K" : "Ctrl+K"}</DropdownMenuShortcut>
-								</DropdownMenuItem>
-							)}
+							<CommandPaletteSearchItem enabled={commandPaletteEnabled} onOpen={() => openCommandPalette(true)} />
 							<DropdownMenuSeparator />
 							<DropdownMenuItem onSelect={() => setTimeout(() => setMobileOpen(true), 0)}>
 								<Smartphone aria-hidden="true" />
