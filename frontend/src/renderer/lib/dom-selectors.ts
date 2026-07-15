@@ -1,4 +1,5 @@
-export const OPEN_MODAL_SELECTOR = '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]';
+export const OPEN_MODAL_SELECTOR =
+	'[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"], [role="menu"][data-state="open"]';
 
 export function isAnyModalOpen(): boolean {
 	if (typeof document === "undefined") return false;
