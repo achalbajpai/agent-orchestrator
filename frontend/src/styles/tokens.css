@@ -357,7 +357,7 @@
 	/* Command palette */
 	--color-bg-command-palette: var(--popover);
 	--color-border-command-palette: var(--border);
-	--color-bg-command-item-active: var(--accent);
+	--color-bg-command-item-active: var(--color-interactive-active);
 	--color-text-command-item: var(--foreground);
 	--color-text-command-placeholder: var(--muted-foreground);
 	--color-text-command-muted: var(--muted-foreground);
